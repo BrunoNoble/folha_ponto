@@ -8,19 +8,28 @@ use App\Http\Requests\UpdateFolhaPontosRequest;
 use Carbon\Carbon;
 use DateTime;
 use GuzzleHttp\Client;
-use http\Env\Request;
-use function Sodium\add;
+use Illuminate\Http\Request;
 
 class FolhaPontosController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $valueOfItem = $request->input('filtro');
+        if ($valueOfItem)
+        {
+            $itens = $this->getFilter($valueOfItem);
+        }else
+        {
+            $itens = FolhaPontos::all();
+        }
 
 
-        $itens = FolhaPontos::all();
+
+
+
         $hoursOfMonth = $this->getHoursOfDate('month');
         $hoursOfWeek = $this->getHoursOfDate('week');
         $hoursOfLastWeek = $this->getHoursOfDate('lastweek');
@@ -39,9 +48,35 @@ class FolhaPontosController extends Controller
             'itens'=>$itens,
             'hoursinfo' => $infos
 
+
         ]);
     }
+    private function getFilter(string $filtro)
+    {
+        $dateCurrent = Carbon::now();
 
+        switch ($filtro)
+        {
+            case '1':
+                $startDate = $dateCurrent->startOfWeek()->format('Y-m-d');
+                $endDate = $dateCurrent->endOfWeek()->format('Y-m-d');
+                break;
+            case '2':
+                $startDate = $dateCurrent->firstOfMonth()->format('Y-m-d');
+                $endDate = $dateCurrent->lastOfMonth();
+                break;
+            case '3':
+                $startDate = $dateCurrent->firstOfYear()->format('Y-m-d');
+                $endDate = $dateCurrent->lastOfYear()->format('Y-m-d');
+                break;
+        }
+
+        $points = FolhaPontos::whereBetween('entry_date', [$startDate, $endDate]);
+
+        dd($points);
+
+        return $points;
+    }
 
 
     /**

@@ -6,18 +6,18 @@
     <br>
     <h3 class="text-center">Registro De Ponto</h3>
     <div class="d-flex justify-content-between align-content-center">
+
         <div class="col-1 my-3">
 
-            <form action="{{ route('filtro') }}" method="post">
+            <form action="" method="GET">
             @csrf
 
-            <select class="form-select" aria-label="Default select example">
+                <select class="form-select" name="filtro" aria-label="Default select example" onchange="this.form.submit()">
+                    <option value="1" {{ (session('filtro') == '1') ? 'selected' : '' }}>Semana</option>
+                    <option value="2" {{ (session('filtro') == '2') ? 'selected' : '' }}>Mês</option>
+                    <option value="3" {{ (session('filtro') == '3') ? 'selected' : '' }}>Ano</option>
+                </select>
 
-                <option value="1" name="filtro">Semana</option>
-                <option value="2" name="filtro">Mês</option>
-                <option value="3" name="filtro">Year</option>
-
-            </select>
             </form>
 
         </div>
