@@ -90,6 +90,8 @@ class FolhaPontosController extends Controller
         {
 
             $date = Carbon::create($itens->first()->entry_date);
+
+
         }else
         {
             $date = null;
@@ -173,8 +175,8 @@ class FolhaPontosController extends Controller
     private function getInfoForCards(int $conditions = 1 , array &$data = null, Carbon $dateRequired = null): array
     {
 
-        if (!$dateRequired){
-            return [] ;
+        if (!$dateRequired) {
+            return [];
             //tetando
             // Switch para diferentes períodos do ano
 //            switch ($conditions) {
@@ -234,64 +236,73 @@ class FolhaPontosController extends Controller
 //                    $title = "Total";
 //                    break;
 //            }
-        }else
-            {
-                // Switch para diferentes períodos do ano
-                switch ($conditions) {
-                    case 1:
+        } else {
+            // Switch para diferentes períodos do ano
 
-                        // Obtendo o início e o fim da semana com base na data atual
-                        $startDate = $dateRequired->startOfWeek()->format('Y-m-d');
-                        $endDate = $dateRequired->endOfWeek()->format('Y-m-d');
+            switch ($conditions) {
+                case 1:
+                    $datecurrent = clone $dateRequired;
+                    // Obtendo o início e o fim da semana com base na data atual
+                    $startDate = $datecurrent->startOfWeek()->format('Y-m-d');
+                    $endDate = $datecurrent->endOfWeek()->format('Y-m-d');
 
-                        // Título para o card
-                        $title = "Esta Semana";
-                        break;
-                    case 2:
-                        // Pegando a data da semana passada
+                    // Título para o card
+                    $title = "Esta Semana";
+                    break;
+                case 2:
+                    // Pegando a data da semana passada
 
-                        $dateRequired = $dateRequired->subWeek();
-                        // Obtendo o início e o fim da semana com base na data da semana passada
-                        $startDate = $dateRequired->startOfWeek()->format('Y-m-d');
-                        $endDate = $dateRequired->endOfWeek()->format('Y-m-d');
+                    $datecurrent = clone $dateRequired;
+                    $datecurrent->subWeek();
+                    // Obtendo o início e o fim da semana com base na data da semana passada
+                    $startDate = $datecurrent->startOfWeek()->format('Y-m-d');
+                    $endDate = $datecurrent->endOfWeek()->format('Y-m-d');
 
-                        // Título para o card
-                        $title = "Última Semana";
-                        break;
-                    case 3:
+                    // Título para o card
+                    $title = "Última Semana";
+                    break;
+                case 3:
+
+                    $datecurrent = clone $dateRequired;
+
+                    // Obtendo o primeiro e o último dia do mês com base na data atual
+                    $startDate = $datecurrent->firstOfMonth()->format('Y-m-d');
+                    $endDate = $datecurrent->lastOfMonth()->format('Y-m-d');
+
+                    // Título para o card
+                    $title = "Este Mês";
+
+                    break;
+                case 4:
+                    // Pegando a data do mês anterior
+                    $datecurrent = clone $dateRequired;
+                    $datecurrent->subMonth();
+
+                    // Obtendo o primeiro e o último dia do mês com base na data do mês anterior
+                    $startDate = $datecurrent->firstOfMonth()->format('Y-m-d');
+                    $endDate = $datecurrent->lastOfMonth()->format('Y-m-d');
+
+                    // Título para o card
+                    $title = "Último Mês";
 
 
+                    break;
+                case 5:
 
-                        // Obtendo o primeiro e o último dia do mês com base na data atual
-                        $startDate = $dateRequired->firstOfMonth()->format('Y-m-d');
-                        $endDate = $dateRequired->lastOfMonth()->format('Y-m-d');
+                    $datecurrent = clone $dateRequired ;
 
-                        // Título para o card
-                        $title = "Este Mês";
-                        break;
-                    case 4:
-                        // Pegando a data do mês anterior
-                        $dateRequired = $dateRequired->subMonth();
-                        // Obtendo o primeiro e o último dia do mês com base na data do mês anterior
-                        $startDate = $dateRequired->firstOfMonth()->format('Y-m-d');
-                        $endDate = $dateRequired->lastOfMonth()->format('Y-m-d');
+                    // Obtendo o primeiro e o último dia do ano com base na data atual
+                    $startDate = $datecurrent->firstOfYear()->format('Y-m-d');
+                    $endDate = $datecurrent->lastOfYear()->format('Y-m-d');
 
-                        // Título para o card
-                        $title = "Último Mês";
-                        break;
-                    case 5:
-                        // Pegando a data atual
+                    // Título para o card
+                    $title = "Total";
 
 
-                        // Obtendo o primeiro e o último dia do ano com base na data atual
-                        $startDate = $dateRequired->firstOfYear()->format('Y-m-d');
-                        $endDate = $dateRequired->lastOfYear()->format('Y-m-d');
-
-                        // Título para o card
-                        $title = "Total";
-                        break;
-                }
+                    break;
             }
+
+        }
 
 
         //Obtem as horas requeridas daquele periodo
@@ -429,15 +440,18 @@ class FolhaPontosController extends Controller
         // Inicializa o contador de dias úteis
         $numberOfDays = 0;
 
+
         // Loop até a data atual ser menor ou igual à data de término
         while ($dateCurrent->lessThanOrEqualTo(Carbon::createFromDate($dateEnd)))
        {
+
            // Verifica se o dia atual não é final de semana e não é um feriado
             if (!$dateCurrent->isWeekend() && !in_array($dateCurrent->format('Y-m-d') , $holidays))
             {
                 $numberOfDays ++;
 
             }
+
            // Avança para o próximo dia
             $dateCurrent->addDay();
        }
