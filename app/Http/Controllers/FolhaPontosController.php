@@ -9,146 +9,299 @@ use Carbon\Carbon;
 use DateTime;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Database\Eloquent\Collection;
 
+//senha 3\8pi#t^P5(57U&RYUY&
 class FolhaPontosController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * obtem as informacoes necessarias para a view folha de pontos.
      */
     public function index(Request $request)
     {
-        $valueOfItem = $request->input('filtro');
-        if ($valueOfItem)
+
+        //Primeiro filtro semana mes ano
+        $firstFilter = $request->input('filtro');
+        //Segundo filtro date x date
+        $filterOfDate = $request->all();
+        //adiciona variavel de sessao para manter filtro selecionado
+        Session::put('filtro', $firstFilter);
+        //adiciona variavel de sessao para manter data selecionada
+        Session::put('filtroDate', $filterOfDate);
+
+        //Verifica se foi feito algum filtro
+        if ($firstFilter)
         {
-            $itens = $this->getFilter($valueOfItem);
+            $itens = $this->getFilterData($firstFilter); //obtem dados conforme filtro
+
+        }
+        else if ($filterOfDate) //Verifica se foi feito  filtro por date
+        {
+            //Obtem dados conforme das datas passadas
+           $itens = FolhaPontos::whereBetween('entry_date', [$filterOfDate['entry_date'],$filterOfDate['exit_date']])->get();
+
         }else
         {
-            $itens = FolhaPontos::all();
+            //filtra por padrao a semana
+            $itens = $this->getFilterData($firstFilter ? : '' );
+        }
+
+        //Obtem o total de horas conforme os itens filtrados
+        $totalHoursOfItens = $this->sumHours($itens);
+
+        if ($itens->first())
+        {
+
+            $date = Carbon::create($itens->first()->entry_date);
+        }else
+        {
+            $date = null;
         }
 
 
-
-
-
-        $hoursOfMonth = $this->getHoursOfDate('month');
-        $hoursOfWeek = $this->getHoursOfDate('week');
-        $hoursOfLastWeek = $this->getHoursOfDate('lastweek');
-
-        $hoursOfLasMonth =  $this->getHoursOfDate('lastmonth');
-        $totalHours = $this->getHoursOfDate('year');
-
-        $infos = [['Esta Semana',$hoursOfWeek],
-            ['Última Semana',$hoursOfLastWeek],
-            ['Este Mês',$hoursOfMonth],
-            ['Último Mês',$hoursOfLasMonth],
-            ['Total', $totalHours]
-            ];
-
+        //retorna dados a view
         return view('folha-pontos',[
             'itens'=>$itens,
-            'hoursinfo' => $infos
+            'hoursinfo' => $this->getInfoForCards(dateRequired: $date ),
+            'totalHoursOfList'=> $totalHoursOfItens
 
 
         ]);
     }
-    private function getFilter(string $filtro)
+    /**
+     * Filtra os dados do tipo Folha de Ponto com base na string fornecida.
+     *
+     * @param string $filtro Parâmetro para filtragem.
+     *
+     * @return \Illuminate\Support\Collection Coleção dos dados filtrados do tipo FolhaPonto.
+     */
+
+    private function getFilterData(string $filtro) : Collection
     {
         $dateCurrent = Carbon::now();
 
         switch ($filtro)
         {
+            //dados desta semana
             case '1':
                 $startDate = $dateCurrent->startOfWeek()->format('Y-m-d');
                 $endDate = $dateCurrent->endOfWeek()->format('Y-m-d');
                 break;
+                //dados da semana anterior
             case '2':
-                $startDate = $dateCurrent->firstOfMonth()->format('Y-m-d');
-                $endDate = $dateCurrent->lastOfMonth();
+                $dateCurrent->subWeek();
+                $startDate = $dateCurrent->startOfWeek()->format('Y-m-d');
+                $endDate = $dateCurrent->endOfWeek()->format('Y-m-d');
                 break;
+                //dados deste mes
             case '3':
+                $startDate = $dateCurrent->firstOfMonth()->format('Y-m-d');
+                $endDate = $dateCurrent->lastOfMonth()->format('Y-m-d');
+                break;
+                //dados mes anterior
+            case '4':
+                $dateCurrent = Carbon::now()->subMonth();
+
+                $startDate = $dateCurrent->firstOfMonth()->format('Y-m-d');
+                $endDate = $dateCurrent->lastOfMonth()->format('Y-m-d');
+                break;
+                //dados deste ano
+            case '5':
                 $startDate = $dateCurrent->firstOfYear()->format('Y-m-d');
                 $endDate = $dateCurrent->lastOfYear()->format('Y-m-d');
                 break;
+                //dados por padrao desta semana
+            default:
+                $startDate = $dateCurrent->startOfWeek()->format('Y-m-d');
+                $endDate = $dateCurrent->endOfWeek()->format('Y-m-d');
+
+                break;
         }
 
-        $points = FolhaPontos::whereBetween('entry_date', [$startDate, $endDate]);
+        //obetem dados pela filtragem
+        $points = FolhaPontos::whereBetween('entry_date', [$startDate, $endDate])->get();
 
-        dd($points);
+        return $points; //retorna Collection de Folha de pontos
+    }
 
-        return $points;
+    /**
+     * A função preenche dados necessários para cards com base na condição fornecida.
+     *
+     * @param int $conditions Número da condição a ser processada (de 1 a 5).
+     * @param array|null $data Dados adicionais que podem ser fornecidos (opcional).
+     * @return array Retorna um array contendo os dados preenchidos para os cards.
+     */
+
+
+    private function getInfoForCards(int $conditions = 1 , array &$data = null, Carbon $dateRequired = null): array
+    {
+
+        if (!$dateRequired){
+            return [] ;
+            //tetando
+            // Switch para diferentes períodos do ano
+//            switch ($conditions) {
+//                case 1:
+//                    // Pegando a data atual
+//                    $currentDate = Carbon::now();
+//
+//                    // Obtendo o início e o fim da semana com base na data atual
+//                    $startDate = $currentDate->startOfWeek()->format('Y-m-d');
+//                    $endDate = $currentDate->endOfWeek()->format('Y-m-d');
+//
+//                    // Título para o card
+//                    $title = "Esta Semana";
+//                    break;
+//                case 2:
+//                    // Pegando a data da semana passada
+//                    $currentDate = Carbon::now()->subWeek();
+//
+//                    // Obtendo o início e o fim da semana com base na data da semana passada
+//                    $startDate = $currentDate->startOfWeek()->format('Y-m-d');
+//                    $endDate = $currentDate->endOfWeek()->format('Y-m-d');
+//
+//                    // Título para o card
+//                    $title = "Última Semana";
+//                    break;
+//                case 3:
+//                    // Pegando a data atual
+//                    $currentDate = Carbon::now();
+//
+//                    // Obtendo o primeiro e o último dia do mês com base na data atual
+//                    $startDate = $currentDate->firstOfMonth()->format('Y-m-d');
+//                    $endDate = $currentDate->lastOfMonth()->format('Y-m-d');
+//
+//                    // Título para o card
+//                    $title = "Este Mês";
+//                    break;
+//                case 4:
+//                    // Pegando a data do mês anterior
+//                    $currentDate = Carbon::now()->subMonth();
+//
+//                    // Obtendo o primeiro e o último dia do mês com base na data do mês anterior
+//                    $startDate = $currentDate->firstOfMonth()->format('Y-m-d');
+//                    $endDate = $currentDate->lastOfMonth()->format('Y-m-d');
+//
+//                    // Título para o card
+//                    $title = "Último Mês";
+//                    break;
+//                case 5:
+//                    // Pegando a data atual
+//                    $currentDate = Carbon::now();
+//
+//                    // Obtendo o primeiro e o último dia do ano com base na data atual
+//                    $startDate = $currentDate->firstOfYear()->format('Y-m-d');
+//                    $endDate = $currentDate->lastOfYear()->format('Y-m-d');
+//
+//                    // Título para o card
+//                    $title = "Total";
+//                    break;
+//            }
+        }else
+            {
+                // Switch para diferentes períodos do ano
+                switch ($conditions) {
+                    case 1:
+
+                        // Obtendo o início e o fim da semana com base na data atual
+                        $startDate = $dateRequired->startOfWeek()->format('Y-m-d');
+                        $endDate = $dateRequired->endOfWeek()->format('Y-m-d');
+
+                        // Título para o card
+                        $title = "Esta Semana";
+                        break;
+                    case 2:
+                        // Pegando a data da semana passada
+
+                        $dateRequired = $dateRequired->subWeek();
+                        // Obtendo o início e o fim da semana com base na data da semana passada
+                        $startDate = $dateRequired->startOfWeek()->format('Y-m-d');
+                        $endDate = $dateRequired->endOfWeek()->format('Y-m-d');
+
+                        // Título para o card
+                        $title = "Última Semana";
+                        break;
+                    case 3:
+
+
+
+                        // Obtendo o primeiro e o último dia do mês com base na data atual
+                        $startDate = $dateRequired->firstOfMonth()->format('Y-m-d');
+                        $endDate = $dateRequired->lastOfMonth()->format('Y-m-d');
+
+                        // Título para o card
+                        $title = "Este Mês";
+                        break;
+                    case 4:
+                        // Pegando a data do mês anterior
+                        $dateRequired = $dateRequired->subMonth();
+                        // Obtendo o primeiro e o último dia do mês com base na data do mês anterior
+                        $startDate = $dateRequired->firstOfMonth()->format('Y-m-d');
+                        $endDate = $dateRequired->lastOfMonth()->format('Y-m-d');
+
+                        // Título para o card
+                        $title = "Último Mês";
+                        break;
+                    case 5:
+                        // Pegando a data atual
+
+
+                        // Obtendo o primeiro e o último dia do ano com base na data atual
+                        $startDate = $dateRequired->firstOfYear()->format('Y-m-d');
+                        $endDate = $dateRequired->lastOfYear()->format('Y-m-d');
+
+                        // Título para o card
+                        $title = "Total";
+                        break;
+                }
+            }
+
+
+        //Obtem as horas requeridas daquele periodo
+        $hoursRequired = $this->getHoursRequired($startDate,$endDate);
+
+        //filtro a db baseado na switch
+        $days = FolhaPontos::whereBetween('entry_date', [$startDate, $endDate])->get();
+
+
+        //obtem as horas contabilizadas durante aquele periodo e formatada em string
+        $formatedHours =  $this->sumHours($days);
+
+        //Array de dados a serem utilizados na view
+        $data[] = ['title'=> $title, 'hours'=> $formatedHours,'hoursrequired'=> $hoursRequired ];
+
+        // Se o número de condições ainda for menor que 5 (1 a 4), então há mais condições para processar
+        if ($conditions < 5)
+        {
+            // Incrementa o valor de $conditions para avançar para a próxima condição
+            $conditions ++;
+
+            // Chama recursivamente a função atual, passando a próxima condição e os dados existentes
+            $this->getInfoForCards($conditions, $data,$dateRequired);
+        }
+
+
+        return $data;
     }
 
 
     /**
-     * Obetem o total de horas da folha de ponto baseado na semana atual.
-     * Retorna a string formatada do total de horas
+     * Soma as horas trabalhadas de um período específico.
+     *
+     * @param \Illuminate\Support\Collection $days Coleção com os dias do período a serem somadas as horas.
+     *
+     * @return string Retorna o total de horas somadas e formatadas.
      */
-    private function getHoursOfDate(string $conditon ): array
+
+
+    private function sumHours(Collection $days) :string
     {
-        switch ($conditon)
-        {
-            case 'week':
-                //Pegando data atual
-                $dataAtual = Carbon::now();
-
-
-                //baseado na data atual pega comeco da semana
-                $startDate = $dataAtual->startOfWeek()->format('Y-m-d');
-                //baseado na data atual pega ultimo dia da semana
-                $endDate = $dataAtual->endOfWeek()->format('Y-m-d');
-
-                break;
-            case 'lastweek':
-                //Pegando data atual
-                $dataAtual = Carbon::now()->subWeek();
-
-                //baseado na data atual pega comeco da semana
-                $startDate = $dataAtual->startOfWeek()->format('Y-m-d');
-                //baseado na data atual pega ultimo dia da semana
-                $endDate = $dataAtual->endOfWeek()->format('Y-m-d');
-                break;
-            case 'month':
-                //Pegando data atual
-                $dataAtual = Carbon::now();
-
-                $startDate = $dataAtual->firstOfMonth()->format('Y-m-d');
-                //baseado na data atual pega ultimo dia da semana
-                $endDate = $dataAtual->lastOfMonth()->format('Y-m-d');
-
-
-                break;
-            case 'lastmonth':
-                //Pegando data atual
-                $dataAtual = Carbon::now()->lastOfMonth();
-
-                $startDate = $dataAtual->firstOfMonth()->format('Y-m-d');
-
-                //baseado na data atual pega ultimo dia da semana
-                $endDate = $dataAtual->lastOfMonth()->format('Y-m-d');
-
-                break;
-            case 'year':
-                //Pegando data atual
-                $dataAtual = Carbon::now();
-
-                $startDate = $dataAtual->firstOfYear()->format('Y-m-d');
-                //baseado na data atual pega ultimo dia da semana
-                $endDate = $dataAtual->lastOfYear()->format('Y-m-d');
-
-                break;
-        }
-
-        $hoursRequired = $this->getHoursRequired($startDate,$endDate);
-
-
-        //filtro a db baseado na semana
-        $week = FolhaPontos::whereBetween('entry_date', [$startDate, $endDate])->get();
 
         //declaracao variavel
-        $minutesOfWeek = 0;
+        $totralMinutesOfDay = 0;
 
-        //percore os dados da semana
-        foreach ($week as $day)
+        foreach ($days as $day)
         {
             //obtem a horas feitas no dia
             $stringHoursOfDay = $day->getHours();
@@ -160,26 +313,28 @@ class FolhaPontosController extends Controller
             $totalMinutes = $hour * 60 + $minutes;
 
             //incrementa a variavel
-            $minutesOfWeek += $totalMinutes;
+            $totralMinutesOfDay += $totalMinutes;
 
         }
         //convertendo minutos em horas
-        $hours = floor($minutesOfWeek / 60);
+        $hours = floor($totralMinutesOfDay / 60);
         //obetend apenas minutos
-        $minutes = $minutesOfWeek % 60;
+        $minutes = $totralMinutesOfDay % 60;
 
         //formatando a string
         $formatedHours = sprintf( "%02d:%02d",$hours, $minutes);
 
-        $data = [$formatedHours, $hoursRequired ];
-        return $data;
+        //retorna o total
+        return $formatedHours;
     }
 
     /**
-     * Puxa de uma api todos os feriados do ano
-     * @return array
+     * Obtém, por meio de uma API, todos os feriados do ano com base em um código de identificação.
+     *
+     * @return array Retorna um array contendo todas as datas de feriados.
      */
-    private function getHolidays() : array
+
+    private function getHolidays(int $year) : array
     {
         // Definindo a chave de API (substitua 'YOUR_API_KEY' pela sua chave real)
         $apiKey = 'YOUR_API_KEY';
@@ -190,8 +345,10 @@ class FolhaPontosController extends Controller
         // Criando uma nova instância do cliente Guzzle HTTP
         $client = new Client();
 
+
+
         // Fazendo uma requisição GET para a API de feriados
-        $response = $client->get("https://date.nager.at/Api/v2/PublicHolidays/2023/{$countryCode}?apikey={$apiKey}");
+        $response = $client->get("https://date.nager.at/Api/v2/PublicHolidays/".$year."/{$countryCode}?apikey={$apiKey}");
 
         // Decodificando a resposta JSON para um array associativo
         $holidays = json_decode($response->getBody(), true);
@@ -210,29 +367,55 @@ class FolhaPontosController extends Controller
 
     }
 
-    private function getHoursRequired(string $dateStart, string $dateEnd) : int
+
+
+    /**
+     * Calcula as horas requeridas entre duas datas, excluindo finais de semana e feriados.
+     *
+     * @param string $dateStart Data de início no formato 'YYYY-MM-DD'.
+     * @param string $dateEnd Data de término no formato 'YYYY-MM-DD'.
+     *
+     * @return string Retorna o total de horas requeridas no formato 'HH:MM'.
+     */
+    private function getHoursRequired(string $dateStart, string $dateEnd) : string
 
     {
-        $holidays = $this->getHolidays();
+        // Obtém o ano da data de início
+        $year = substr($dateStart, 0, 4);
 
+        // Obtém a lista de feriados do ano
+        $holidays = $this->getHolidays($year);
+
+        // Cria um objeto Carbon a partir da data de início
         $dateCurrent = Carbon::createFromDate($dateStart) ;
 
-
+        // Inicializa o contador de dias úteis
         $numberOfDays = 0;
 
-       while ($dateCurrent->lessThan(Carbon::createFromDate($dateEnd)))
+        // Loop até a data atual ser menor ou igual à data de término
+        while ($dateCurrent->lessThanOrEqualTo(Carbon::createFromDate($dateEnd)))
        {
+           // Verifica se o dia atual não é final de semana e não é um feriado
             if (!$dateCurrent->isWeekend() && !in_array($dateCurrent->format('Y-m-d') , $holidays))
             {
                 $numberOfDays ++;
-            }
 
+            }
+           // Avança para o próximo dia
             $dateCurrent->addDay();
        }
 
+        // Calcula o número total de horas
+       $numberOfHors = $numberOfDays * 8;
 
+        // Divide as horas em horas e minutos
+        $hours = floor($numberOfHors);
+        $minutes = ($numberOfHors - $hours) * 60;
 
-       return $numberOfDays * 8;
+        // Formata o resultado como 'HH:MM'
+        $stringFormated = sprintf("%02d:%02d",$hours, $minutes);
+
+        return $stringFormated;
 
     }
 
