@@ -15,6 +15,42 @@ use Illuminate\Database\Eloquent\Collection;
 //senha 3\8pi#t^P5(57U&RYUY&
 class FolhaPontosController extends Controller
 {
+    public function registerPonto(Request $request)
+    {
+        $date = Carbon::create( $request->input('time'));
+
+
+        if (FolhaPontos::where('entry_date',$date->format('Y-m-d'))->get() == null)
+        {
+            echo '22';
+
+        }else
+        {
+            $register = new FolhaPontos();
+            // Supondo que você tenha o ID do usuário desejado
+            $userId = 1; // Substitua pelo ID do usuário correto
+
+            $register->user_id = $userId;
+            $register->entry_date = $date->format('Y-m-d');
+            $register->exit_date = $date->format('Y-m-d');
+            $register->entry_hour = $date->format('H:i:s');
+            $register->exit_hour = $date->format('H:i:s');
+            $register->break_entry = $date->format('H:i:s');
+            $register->break_exit = $date->format('H:i:s');
+
+
+
+
+            $register->save();
+
+        }
+
+        return view('register-ponto',[
+
+        ]);
+    }
+
+
     /**
      * obtem as informacoes necessarias para a view folha de pontos.
      */
@@ -362,6 +398,7 @@ class FolhaPontosController extends Controller
 
 
         }
+
         // Retornando a view 'holidays' com os feriados compactados para serem usados na view
         return $holidaysDates;
 

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/',[\App\Http\Controllers\FolhaPontosController::class, 'index']);
 
 Route::get('/filtro', [\App\Http\Controllers\FolhaPontosController::class,'filtro'])->name('filtro');
+Route::get('/ponto',[\App\Http\Controllers\FolhaPontosController::class,'registerPonto'])->name('ponto');
 
 Auth::routes();
 
