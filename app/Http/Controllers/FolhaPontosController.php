@@ -17,34 +17,76 @@ class FolhaPontosController extends Controller
 {
     public function registerPonto(Request $request)
     {
-        $date = Carbon::create( $request->input('time'));
 
 
-        if (FolhaPontos::where('entry_date',$date->format('Y-m-d'))->get() == null)
+        if ($request->all())
         {
-            echo '22';
+            $date = Carbon::create($request->input('time')) ;
 
-        }else
-        {
-            $register = new FolhaPontos();
-            // Supondo que você tenha o ID do usuário desejado
-            $userId = 1; // Substitua pelo ID do usuário correto
+            switch ($request['conditions'])
+            {
+                case "startDay":
 
-            $register->user_id = $userId;
-            $register->entry_date = $date->format('Y-m-d');
-            $register->exit_date = $date->format('Y-m-d');
-            $register->entry_hour = $date->format('H:i:s');
-            $register->exit_hour = $date->format('H:i:s');
-            $register->break_entry = $date->format('H:i:s');
-            $register->break_exit = $date->format('H:i:s');
-
-
+                    $register = new FolhaPontos();
+                    $register->user_id = 1;
+                    $register->entry_date = $date->format('Y-m-d');
+                    $register->exit_date = null;
+                    $register->entry_hour = $date->format('H:i:s');
+                    $register->exit_hour = null;
+                    $register->break_entry = null;
+                    $register->break_exit = null;
+                    $register->save();
 
 
-            $register->save();
+                    Session::put('id_register', $register->id);
+
+                    Session::put('register', 'break_entry');
+                    break;
+                case "breakEntry":
+                    if (Session::get('id_register') !== null)
+                    {
+                        $registerCurrent = FolhaPontos::where('id',Session::get('id_register'))->first();
+                        if ($registerCurrent !== null){
+                            $registerCurrent->break_entry = $date->format('H:i:s');
+                            $registerCurrent->save();
+                        }
+                    }
+
+
+                    Session::put('register', 'break_exit');
+                    break;
+                case "breakExit":
+                    if (Session::get('id_register') !== null)
+                    {
+                        $registerCurrent = FolhaPontos::where('id',Session::get('id_register'))->first();
+                        if ($registerCurrent !== null) {
+
+                            $registerCurrent->break_exit = $date->format('H:i:s');
+                            $registerCurrent->save();
+                        }
+
+                    }
+
+                    Session::put('register', 'exit');
+                    break;
+                case "exit":
+                    if (Session::get('id_register') !== null)
+                    {
+                        $registerCurrent = FolhaPontos::where('id',Session::get('id_register'))->first();
+                        if ($registerCurrent !== null) {
+                            $registerCurrent->exit_hour = $date->format('H:i:s');
+                            $registerCurrent->exit_date = $date->format('Y-m-d');
+                            $registerCurrent->save();
+                        }
+                    }
+
+
+                    Session::put('register', '');
+                    break;
+            }
 
         }
-
+       ;
         return view('register-ponto',[
 
         ]);
@@ -86,12 +128,13 @@ class FolhaPontosController extends Controller
         //Obtem o total de horas conforme os itens filtrados
         $totalHoursOfItens = $this->sumHours($itens);
 
+        //Se existir dados na filtragem
         if ($itens->first())
         {
 
             $date = Carbon::create($itens->first()->entry_date);
 
-
+        //Caso nao tenha dados
         }else
         {
             $date = null;
@@ -381,37 +424,47 @@ class FolhaPontosController extends Controller
      * @return array Retorna um array contendo todas as datas de feriados.
      */
 
-    private function getHolidays(int $year) : array
+    private function getHolidays(int $year)
     {
-        // Definindo a chave de API (substitua 'YOUR_API_KEY' pela sua chave real)
-        $apiKey = 'YOUR_API_KEY';
-
-        // Definindo o código do país para Portugal
-        $countryCode = 'PT';
-
-        // Criando uma nova instância do cliente Guzzle HTTP
-        $client = new Client();
 
 
 
-        // Fazendo uma requisição GET para a API de feriados
-        $response = $client->get("https://date.nager.at/Api/v2/PublicHolidays/".$year."/{$countryCode}?apikey={$apiKey}");
 
-        // Decodificando a resposta JSON para um array associativo
-        $holidays = json_decode($response->getBody(), true);
+        try {
+            // Definindo a chave de API (substitua 'YOUR_API_KEY' pela sua chave real)
+            $apiKey = 'YOUR_API_KEY';
 
-        $holidaysDates = [];
+            // Definindo o código do país para Portugal
+            $countryCode = 'PT';
 
-        foreach ($holidays as $key => $day)
+            // Criando uma nova instância do cliente Guzzle HTTP
+            $client = new Client();
+
+            // Fazendo uma requisição GET para a API de feriados
+            $response = $client->get("https://date.nager.at/Api/v2/PublicHolidays/".$year."/{$countryCode}?apikey={$apiKey}");
+            // Decodificando a resposta JSON para um array associativo
+            $holidays = json_decode($response->getBody(), true);
+
+            $holidaysDates = [];
+
+            foreach ($holidays as $key => $day)
+            {
+
+                $holidaysDates[] = $day['date'];
+
+
+            }
+
+            // Retornando a view 'holidays' com os feriados compactados para serem usados na view
+            return $holidaysDates;
+        }catch (\Exception $e)
         {
-
-            $holidaysDates[] = $day['date'];
-
+            return response()->json(['error' => 'Ocorreu um erro ao obter os feriados.'], 500);
 
         }
 
-        // Retornando a view 'holidays' com os feriados compactados para serem usados na view
-        return $holidaysDates;
+
+
 
     }
 
@@ -432,7 +485,10 @@ class FolhaPontosController extends Controller
         $year = substr($dateStart, 0, 4);
 
         // Obtém a lista de feriados do ano
+
+
         $holidays = $this->getHolidays($year);
+
 
         // Cria um objeto Carbon a partir da data de início
         $dateCurrent = Carbon::createFromDate($dateStart) ;

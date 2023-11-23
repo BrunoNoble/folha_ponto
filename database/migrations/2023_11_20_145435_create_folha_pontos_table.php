@@ -18,11 +18,11 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users');
 
             $table->date('entry_date' );
-            $table->date('exit_date' );
-            $table->time('entry_hour');
-            $table->time('exit_hour');
-            $table->time('break_entry');
-            $table->time('break_exit');
+            $table->date('exit_date' )->nullable();
+            $table->time('entry_hour')->nullable();
+            $table->time('exit_hour')->nullable();
+            $table->time('break_entry')->nullable();
+            $table->time('break_exit')->nullable();
 
             $table->timestamps();
         });

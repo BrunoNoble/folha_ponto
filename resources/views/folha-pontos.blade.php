@@ -3,7 +3,7 @@
 
 <div class="container">
     <br>
-    <h3 class="text-center">Registro De Ponto</h3>
+    <h3 class="text-center">Folha De Ponto</h3>
     <div class="d-flex justify-content-between align-content-center">
 
         <div class="col-2 mt-3">

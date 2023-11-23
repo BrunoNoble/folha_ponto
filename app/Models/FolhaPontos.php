@@ -12,7 +12,7 @@ use App\Models\User;
 class FolhaPontos extends Model
 {
     use HasFactory;
-    protected $guarded = [];
+    protected $fillable = ['exit_date','entry_hour', 'exit_hour','break_entry','break_exit'];
 
     public function user(): BelongsTo
     {
